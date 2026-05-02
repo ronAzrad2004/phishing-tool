@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  playwright-app:
+    build: .
+    container_name: playwright_worker
+    shm_size: '2gb'
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    volumes:
+      - . : .
