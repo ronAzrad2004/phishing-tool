@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  playwright-app:
+    build: 
+      context: .
+    container_name: playwright_worker
+    shm_size: '2gb'
+    environment:
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./app.py:/app/app.py:Z
+      - ./sender.py:/app/sender.py:Z
+      - ./static:/app/static:Z
+      - ./res:/app/res:Z
