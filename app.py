@@ -76,6 +76,9 @@ async def run_playwright(url: str):
                 return "website is not reachable"
 
             await page.wait_for_load_state("networkidle")
+            source_code = await page.content()
+            with open("./res/source_code.txt", "w", encoding="utf-8") as f:
+                f.write(source_code)
             await page.screenshot(path="./res/website_capture.png", full_page=True)
             await browser.close()
             return "website is reachable"
