@@ -10,7 +10,8 @@ load_dotenv()
 
 def send_email_with_attachments(recipient_email="fill_in_you_email_here", subject="Phishing Analysis Results", files= [
     ("./res/website_capture.png", "website_capture.png"),
-    ("./res/whois_output.txt", "whois_output.txt")
+    ("./res/whois_output.txt", "whois_output.txt"),
+    ("./res/source_code.txt", "source_code.txt")
 ]):
 
     smtp = smtplib.SMTP('smtp.gmail.com', 587)
