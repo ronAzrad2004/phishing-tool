@@ -110,12 +110,20 @@ async def start(payload: INPUT, background_tasks: BackgroundTasks):
         with open("./res/whois_output.txt", "w") as f:
             f.write(f"WHOIS OUTPUT:\n{whois_out.decode(errors='ignore')}\n")
             f.write("_"*50 + f"\nDIG OUTPUT:\n{dig_out.decode(errors='ignore')}\n")
-            
-        background_tasks.add_task(send_email_with_attachments)
+        fanged_url = url_str.replace("https://", "hxxps[://]").replace(".", "[.]").replace("/","[/]").replace(" ", "")
+        await zip_files()
+        background_tasks.add_task(send_email_with_attachments,url=fanged_url)
         return {"status": 200, "domain": domain, "message": "Analysis complete"}
         
     except Exception as e:
         return {"status": 500, "error": str(e)}
+
+async def zip_files():
+    import zipfile
+    with zipfile.ZipFile('./res/analysis_results.zip', 'w') as zipf:
+        zipf.write('./res/source_code.txt', arcname='source_code.txt')
+        zipf.write('./res/website_capture.png', arcname='website_capture.png')
+        zipf.write('./res/whois_output.txt', arcname='whois_and_dig_output.txt')
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
