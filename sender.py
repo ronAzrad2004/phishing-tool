@@ -9,10 +9,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def send_email_with_attachments(recipient_email="fill_in_you_email_here", subject="Phishing Analysis Results", files= [
-    ("./res/website_capture.png", "website_capture.png"),
-    ("./res/whois_output.txt", "whois_output.txt"),
-    ("./res/source_code.txt", "source_code.txt")
-]):
+    ("./res/analysis_results.zip", "analysis_results.zip")
+],url=""):
 
     smtp = smtplib.SMTP('smtp.gmail.com', 587)
     smtp.ehlo()
@@ -22,14 +20,13 @@ def send_email_with_attachments(recipient_email="fill_in_you_email_here", subjec
     msg = MIMEMultipart()
     msg['From'] = os.getenv("EMAIL_USER")
     msg['To'] = recipient_email
-    msg['Subject'] = subject
+    msg['Subject'] = subject + url
     msg.attach(MIMEText("", "plain", "utf-8"))
 
     for path, name in files:
         if os.path.exists(path):
             file_ext = path.split('.')[-1].lower()
-            mime_type = 'image/png' if file_ext == 'png' else 'text/plain'
-            main_type, sub_type = mime_type.split('/')
+            main_type, sub_type = "application", "zip"
 
             with open(path, 'rb') as f:
                 part = MIMEBase(main_type, sub_type)
