@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 import uvicorn
 from pydantic import BaseModel, HttpUrl
 from sender import send_email_with_attachments
+import tldextract
 
 
 app = FastAPI()
@@ -69,39 +70,42 @@ async def run_playwright(url: str):
             context = await browser.new_context(user_agent=get_random_user_agent())
             page = await context.new_page()
             
-            response = await page.goto(url, timeout=30000)
+            response = await page.goto(url, timeout=30000, wait_until="networkidle")
             
             if not response or not response.ok:
                 await browser.close()
-                return "website is not reachable"
+                return "website is not reachable", url
 
-            await page.wait_for_load_state("networkidle")
+            final_url = page.url 
+            
             source_code = await page.content()
             with open("./res/source_code.txt", "w", encoding="utf-8") as f:
                 f.write(source_code)
             await page.screenshot(path="./res/website_capture.png", full_page=True)
+            
             await browser.close()
-            return "website is reachable"
+            return "website is reachable", final_url
         except Exception:
             await browser.close()
-            return "website is not reachable"
+            return "website is not reachable", url
 
 @app.post("/")
 async def start(payload: INPUT, background_tasks: BackgroundTasks):
     try:
-        url_str = str(payload.url)
-        result = await run_playwright(url_str)
+        url = str(payload.url)
+        result, url_str = await run_playwright(url)
         
         if result == "website is not reachable":
             return {"status": 404, "message": "Website is not reachable"}
         
         domain = url_str.split("://")[-1].split("/")[0].replace("www.", "")
-        
+        ext = tldextract.extract(domain)
+        registered_domain = ext.registered_domain
         whois_proc = await asyncio.create_subprocess_exec(
-            'whois', domain, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            'whois', registered_domain, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         dig_proc = await asyncio.create_subprocess_exec(
-            'dig', domain, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            'dig', registered_domain, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         
         whois_out, _ = await whois_proc.communicate()
@@ -110,7 +114,7 @@ async def start(payload: INPUT, background_tasks: BackgroundTasks):
         with open("./res/whois_output.txt", "w") as f:
             f.write(f"WHOIS OUTPUT:\n{whois_out.decode(errors='ignore')}\n")
             f.write("_"*50 + f"\nDIG OUTPUT:\n{dig_out.decode(errors='ignore')}\n")
-        fanged_url = url_str.replace("https://", "hxxps[://]").replace(".", "[.]").replace("/","[/]").replace(" ", "")
+        fanged_url = url_str.replace("https://", "hxxps[://]").replace("http://", "hxxp[://]").replace(".", "[.]").replace("/","[/]").replace(" ", "")
         await zip_files()
         background_tasks.add_task(send_email_with_attachments,url=fanged_url)
         return {"status": 200, "domain": domain, "message": "Analysis complete"}
