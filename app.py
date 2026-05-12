@@ -8,6 +8,7 @@ import uvicorn
 from pydantic import BaseModel, HttpUrl
 from sender import send_email_with_attachments
 import tldextract
+import base64
 
 
 app = FastAPI()
@@ -65,7 +66,7 @@ def index():
 
 async def run_playwright(url: str):
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True, args=["--no-sandbox"])
+        browser = await p.chromium.launch(headless=True)
         try:
             context = await browser.new_context(user_agent=get_random_user_agent())
             page = await context.new_page()
@@ -74,26 +75,31 @@ async def run_playwright(url: str):
             
             if not response or not response.ok:
                 await browser.close()
+                print(f"Failed to load {url}: {response.status if response else 'No response'}")
                 return "website is not reachable", url
 
             final_url = page.url 
             
             source_code = await page.content()
+            encoded_source = base64.b64encode(source_code.encode('utf-8')).decode('utf-8')
             with open("./res/source_code.txt", "w", encoding="utf-8") as f:
-                f.write(source_code)
+                f.write(encoded_source)
             await page.screenshot(path="./res/website_capture.png", full_page=True)
             
             await browser.close()
             return "website is reachable", final_url
-        except Exception:
+        except Exception as e:
+            print(f"Error occurred while analyzing {url}: {e}")
             await browser.close()
             return "website is not reachable", url
 
 @app.post("/")
 async def start(payload: INPUT, background_tasks: BackgroundTasks):
+    print(f"Received URL for analysis: {payload.url}")
     try:
-        url = str(payload.url)
-        result, url_str = await run_playwright(url)
+        url1 = str(payload.url)
+        print(f"Starting analysis for: {url1}")
+        result, url_str = await run_playwright(url1)
         
         if result == "website is not reachable":
             return {"status": 404, "message": "Website is not reachable"}
